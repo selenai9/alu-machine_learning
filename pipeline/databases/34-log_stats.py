@@ -1,31 +1,32 @@
 #!/usr/bin/env python3
 """
-Nginx logs stored in MongoDB:
+Nginx logs stored in MongoDB
 """
-
 
 from pymongo import MongoClient
 
 
-if __name__ == '__main__':
+def count(collection, query):
+    """Count documents, supporting old and new pymongo versions"""
+    try:
+        return collection.count_documents(query)
+    except AttributeError:
+        return collection.count(query)
 
+
+if __name__ == '__main__':
     client = MongoClient('mongodb://127.0.0.1:27017')
     collection = client.logs.nginx
 
-    # Get the total number of documents
-    total_logs = collection.count_documents({})
+    total_logs = count(collection, {})
 
     methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-    method_counts = {method: collection.count_documents(
-        {"method": method}) for method in methods}
+    method_counts = {m: count(collection, {"method": m}) for m in methods}
 
-    # Get the count of status check
-    status_check_count = collection.count_documents(
-        {"method": "GET", "path": "/status"})
+    status_check = count(collection, {"method": "GET", "path": "/status"})
 
-    # Print the stats
-    print(f"{total_logs} logs")
+    print("{} logs".format(total_logs))
     print("Methods:")
-    for method, count in method_counts.items():
-        print(f"\tmethod {method}: {count}")
-    print(f"{status_check_count} status check")
+    for m in methods:
+        print("\tmethod {}: {}".format(m, method_counts[m]))
+    print("{} status check".format(status_check))
